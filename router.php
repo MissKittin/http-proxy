@@ -25,8 +25,11 @@
 	if(isset($_POST['SERVER']['REMOTE_ADDR']))
 		error_log('i Proxy request from ' . $_POST['SERVER']['REMOTE_ADDR'], 0);
 
+	// router cache
+	$router_cache['strtok']=strtok($_SERVER['REQUEST_URI'], '?');
+
 	// hide script - fake 404
-	if(strtok(substr($_SERVER['REQUEST_URI'], strrpos($_SERVER['REQUEST_URI'], '/') + 1), '?') === 'router.php')
+	if(substr($router_cache['strtok'], strrpos($router_cache['strtok'], '/') + 1) === 'router.php')
 	{
 		echo '<!DOCTYPE html>
 			<html>
@@ -38,8 +41,8 @@
 		exit();
 	}
 
-	// 404 handle
-	if(!file_exists(strtok($_SERVER['DOCUMENT_ROOT'].$_SERVER['REQUEST_URI'], '?')))
+	// 404 handle - for files
+	if(!file_exists($_SERVER['DOCUMENT_ROOT'] . $router_cache['strtok']))
 	{
 		if(substr(strtok($_SERVER['REQUEST_URI'], '?'), -1) === '/')
 			$url='..';
@@ -55,6 +58,30 @@
 		';
 		exit();
 	}
+
+	// 404 handle - for dirs
+	if(is_dir($_SERVER['DOCUMENT_ROOT'] . $router_cache['strtok']))
+		if((file_exists($_SERVER['DOCUMENT_ROOT'] . $router_cache['strtok'] . '/index.php')) || (file_exists($_SERVER['DOCUMENT_ROOT'] . $router_cache['strtok'] . '/index.html')))
+		{ /* everything is ok */ }
+		else
+		{
+			if(substr(strtok($_SERVER['REQUEST_URI'], '?'), -1) === '/')
+				$url='..';
+			else
+				$url='.';
+
+			echo '<!DOCTYPE html>
+				<html>
+					<head>
+						<meta http-equiv="refresh" content="0; url=' . $url . '">
+					</head>
+				</html>
+			';
+			exit();
+		}
+
+	// drop cache
+	unset($router_cache);
 
 	// abort script - load destination file
 	return false;
