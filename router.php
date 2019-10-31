@@ -101,21 +101,25 @@ index.php:
 	// Cookies implementation 15.09.2019
 	// User agent forwarding and variables cleaning 16.09.2019
 	// $_POST encryption and content type implementation 18.09.2019
+	// dyndns disable 31.10.2019
 
 	// Note: You must set post_max_size to high value eg. 4120
 	// with $_POST encryption ~ 6000
 	// $post_encryption_key and $post_encryption_iv must be the same in client and server
 
 	// Settings
+	$ip=''; // not used if dyndns is enabled
 	$port=PORT_OF_YOUR_HTTP_SERVER; //server port
+	$dyndns_enable=true; // enable/disable dyndns
 	$dyndns_server_data='PATH_TO_DYNDNS/ip.txt';
 	$post_encrypt=true; //enable $_POST encryption
 	$post_encryption_key='CHANGE_THIS_TO_RANDOM_STRING';
 	$post_encryption_iv='CHANGE_THIS_TO_RANDOM_STRING'; //must be 16 bytes long
 
 	error_reporting(E_ERROR | E_PARSE); //disable warnings
-	if(!$ip=file_get_contents($dyndns_server_data)) //get server ip
-	{ //something is wrong in config
+	if($dyndns_enable)
+		if(!$ip=file_get_contents($dyndns_server_data)) //get server ip
+		{ //something is wrong in config
 ?>
 <!DOCTYPE html>
 <html>
@@ -190,8 +194,10 @@ index.php:
 </html>
 <?php }
 	/* Variables map:
-	-----------	-$port => proxy server
-	settings	|$dyndns_server_data
+	-----------	-$ip => proxy server address
+			|$port => proxy server port
+			|$dyndns_enable => enable/disable dyndns
+	settings	|$dyndns_server_data => ip.txt from dyndns
 			|$post_encrypt => $_POST encryption switch
 			|$post_encryption_key => openssl key
 			-$post_encryption_iv => openssl initialization vector
@@ -203,7 +209,7 @@ index.php:
 	-----------	-$content => downloaded page <-
 	downloaded	|$cookies => received cookies array <-
 	-----------	-$http_response_header => from file_get_contents() <-
-			Variables in loops: $i, $x, $y $z
+		Variables in loops: $i, $x, $y $z
 	*/
 ?>
 ===============================
