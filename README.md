@@ -1,4 +1,4 @@
 # http-proxy
 Share your home http server without giving ip
 <br><br>
-dependencies: dyndns (or you can hardcode ip by removing lines 90-111 and adding $ip='your_ip';)
+dependencies: dyndns (or you can disable this and specify static adress)
