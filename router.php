@@ -25,8 +25,27 @@
 	if(isset($_POST['SERVER']['REMOTE_ADDR']))
 		error_log('i Proxy request from ' . $_POST['SERVER']['REMOTE_ADDR'], 0);
 
+	// force https (if your hosting dont have https, comment if below)
+	if($_SERVER['REMOTE_ADDR'] != '127.0.0.1')
+		if(!isset($_POST['SERVER']['HTTPS']))
+		{
+			echo '<!DOCTYPE html><html lang="pl-PL"><head><title>Redirect...</title><meta http-equiv="refresh" content="0; url=https://' . $_POST['SERVER']['HTTP_HOST'] . $_POST['SERVER']['REQUEST_URI'] . '" /></head><body><h1>Redirecting...</h1></body></html>';
+			exit();
+		}
+
 	// router cache
 	$router_cache['strtok']=strtok($_SERVER['REQUEST_URI'], '?');
+
+	// import custom .router.php
+	$router_dirs=['mydirwithrouter1', 'mydirwithrouter2'];
+	foreach($router_dirs as $router_dir)
+	{
+		$customrouter=explode('/', $router_cache['strtok']);
+		if($customrouter[1] === $router_dir)
+			if(file_exists($_SERVER['DOCUMENT_ROOT'] . '/' . $customrouter[1] . '/.router.php'))
+				include $_SERVER['DOCUMENT_ROOT'] . '/' . $customrouter[1] . '/.router.php';
+	}
+	unset($router_dirs); unset($router_dir); unset($customrouter);
 
 	// hide script - fake 404
 	if(substr($router_cache['strtok'], strrpos($router_cache['strtok'], '/') + 1) === 'router.php')
@@ -110,6 +129,7 @@ index.php:
 	// Settings
 	$ip=''; // not used if dyndns is enabled
 	$port=PORT_OF_YOUR_HTTP_SERVER; //server port
+	$protocol='http'; //server protocol
 	$dyndns_enable=true; // enable/disable dyndns
 	$dyndns_server_data='PATH_TO_DYNDNS/ip.txt';
 	$post_encrypt=true; //enable $_POST encryption
@@ -196,11 +216,12 @@ index.php:
 	/* Variables map:
 	-----------	-$ip => proxy server address
 			|$port => proxy server port
+			|$protocol => proxy server protocol (http or https)
 			|$dyndns_enable => enable/disable dyndns
-	settings	|$dyndns_server_data => ip.txt from dyndns
+	settings	|$dyndns_server_data
 			|$post_encrypt => $_POST encryption switch
-			|$post_encryption_key => openssl key
-			-$post_encryption_iv => openssl initialization vector
+			|$post_encryption_key => openssl key for $_POST
+			-$post_encryption_iv => openssl initialization vector for $_POST
 	-----------	-$ip => content of file $dyndns_server_data
 			|$dir => extracted directory
 	auto		|$cookies => browser cookies
