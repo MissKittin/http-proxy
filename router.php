@@ -170,8 +170,7 @@ index.php:
 	$content=stream_context_create(array('http'=>array('method'=>'POST', 'header'=>array('User-Agent: ' . $user_agent, 'Cookie: ' . $cookies, 'Content-Type: application/x-www-form-urlencoded'), 'content'=>http_build_query($_POST)))); //add POST array
 
 	//send
-	if($content=file_get_contents('http://' . $ip . ':' . $port . str_replace($dir, '', $_SERVER['REQUEST_URI']), false, $content))
-	{
+	if($content=file_get_contents($protocol . '://' . $ip . ':' . $port . substr($_SERVER['REQUEST_URI'], strlen($dir)), false, $content))	{
 		//set received content type
 		foreach($http_response_header as $i)
 		{
