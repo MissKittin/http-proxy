@@ -111,8 +111,8 @@ HTTP Proxy
 Dependencies: dyndns
 
 Put this files on your remote server:
-index.php:
-===============================
+index.php (file_get_contents version):
+======================================
 <?php
 	// PHP proxy server
 	// 24.08.2019
@@ -232,12 +232,149 @@ index.php:
 		Variables in loops: $i, $x, $y $z
 	*/
 ?>
-===============================
+======================================
+
+index.php (cURL version):
+======================================
+<?php
+	// PHP proxy server - cURL version
+	// 24.08.2019, 07.11.2019
+
+	// Note: You must set post_max_size to high value eg. 4120
+	// with $_POST encryption ~ 6000
+	// $post_encryption_key and $post_encryption_iv must be the same in client and server
+	// $content_encryption_key and $content_encryption_iv must be the same in client and server
+
+	// Settings
+	$ip=''; // not used if dyndns is enabled
+	$port=PORT_OF_YOUR_HTTP_SERVER; //server port
+	$protocol='http'; //server protocol
+	$dyndns_enable=true; // enable/disable dyndns
+	$dyndns_server_data='PATH_TO_DYNDNS/ip.txt';
+	$post_encrypt=true; //enable $_POST encryption
+	$post_encryption_key='CHANGE_THIS_TO_RANDOM_STRING';
+	$post_encryption_iv='CHANGE_THIS_TO_RANDOM_STRING'; //must be 16 bytes long
+
+	error_reporting(E_ERROR | E_PARSE); //disable warnings
+	if($dyndns_enable)
+		if(!$ip=file_get_contents($dyndns_server_data)) //get server ip
+		{ //something is wrong in config
+?>
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Error</title>
+		<meta charset="utf-8">
+		<style type="text/css">
+			body {
+				background-color: #000;
+				color: #fff;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Server address not found</h1>
+	</body>
+</html>
+<?php
+		exit();
+	}
+
+	//prepare
+	$dir=explode('/', $_SERVER['REQUEST_URI']); $dir='/' . $dir[1]; //extract directory
+	$_POST['SERVER']=$_SERVER; //$_SERVER=>$_POST injection
+	$cookies=''; foreach($_COOKIE as $i=>$x) $cookies=$cookies . $i . '=' . $x . '; '; //create cookies for context
+	$user_agent=''; foreach(getallheaders() as $i=>$x) if($i==='User-Agent') { $user_agent="$x"; break; } //get user agent for context
+	if($post_encrypt) foreach($_POST as $i=>$x) if(is_array($_POST[$i])) foreach($_POST[$i] as $y=>$z) $_POST[$i][$y]=openssl_encrypt($z, 'aes128', $post_encryption_key, 0, $post_encryption_iv); else $_POST[$i]=openssl_encrypt($x, 'aes128', $post_encryption_key, 0, $post_encryption_iv); //encrypt $_POST
+
+	//init curl
+	$curl=curl_init();
+	curl_setopt($curl, CURLOPT_URL, $protocol . '://' . $ip . ':' . $port . substr($_SERVER['REQUEST_URI'], strlen($dir)));
+	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($curl, CURLOPT_HEADER, 1);
+	curl_setopt($curl, CURLOPT_POST, 1);
+	curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($_POST));
+	curl_setopt($curl, CURLOPT_HTTPHEADER, array('User-Agent: ' . $user_agent, 'Cookie: ' . $cookies, 'Content-Type: application/x-www-form-urlencoded'));
+	curl_setopt($curl, CURLOPT_FAILONERROR, true);
+
+	//exec curl, get content and headers
+	$content['output']=curl_exec($curl);
+	$content['headers_size']=curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+	$http_response_header=substr($content['output'], 0, $content['headers_size']); $http_response_header=explode(PHP_EOL, $http_response_header);
+	$content=substr($content['output'], $content['headers_size']);
+
+	//parse received data
+	if(curl_errno($curl))
+	{ //something is wrong with client
+?>
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Error</title>
+		<meta charset="utf-8">
+		<style type="text/css">
+			body {
+				background-color: #000;
+				color: #fff;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Server is down. Sorry ¯\_(ツ)_/¯</h1>
+		<h3>Come back later</h3>
+	</body>
+</html>
+<?php }
+	else
+	{
+		//set received content type
+		foreach($http_response_header as $i)
+		{
+			if(preg_match('/^Content-type:\s*([^;]+)/', $i, $x))
+				header('Content-type:' . $x[1]);
+			if(preg_match('/^Content-Type:\s*([^;]+)/', $i, $x))
+				header('Content-Type:' . $x[1]);
+			if(preg_match('/^Content-Length:\s*([^;]+)/', $i, $x))
+				header('Content-Length:' . $x[1]);
+			if(preg_match('/^Content-length:\s*([^;]+)/', $i, $x))
+				header('Content-length:' . $x[1]);
+		}
+
+		//set received cookies
+		$cookies=array();
+		foreach($http_response_header as $i) if(preg_match('/^Set-Cookie:\s*([^;]+)/', $i, $x)) { parse_str($x[1], $y); $cookies+=$y; }
+		foreach($cookies as $i=>$x) setcookie($i, $x, time() + (86400 * 30), '/');
+
+		echo $content; //and display downloaded content
+	}
+	curl_close($curl);
+
+	/* Variables map:
+	-----------	-$ip => proxy server address
+			|$port => proxy server port
+			|$protocol => proxy server protocol (http or https)
+			|$dyndns_enable => enable/disable dyndns
+	settings	|$dyndns_server_data
+			|$post_encrypt => $_POST encryption switch
+			|$post_encryption_key => openssl key for $_POST
+			-$post_encryption_iv => openssl initialization vector for $_POST
+	-----------	-$ip => content of file $dyndns_server_data
+			|$dir => extracted directory
+	auto		|$cookies => browser cookies
+	generated	|$user_agent => browser ID
+			-$curl => cURL content
+	-----------	-$content => downloaded page <-
+	downloaded	|$cookies => received cookies array <-
+	-----------	-$http_response_header => extracted headers from $content <-
+		Variables in loops: $i, $x, $y $z
+	*/
+?>
+======================================
 
 .htaccess
-===============================
+======================================
 RewriteEngine on
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule . index.php [L]
-===============================
+======================================
