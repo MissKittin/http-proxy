@@ -239,6 +239,8 @@ index.php (cURL version):
 <?php
 	// PHP proxy server - cURL version
 	// 24.08.2019, 07.11.2019
+	// Accept enconding option and tcp fastopen 26.11.2019
+	// Cache headers 27.11.2019
 
 	// Note: You must set post_max_size to high value eg. 4120
 	// with $_POST encryption ~ 6000
@@ -296,6 +298,8 @@ index.php (cURL version):
 	curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($_POST));
 	curl_setopt($curl, CURLOPT_HTTPHEADER, array('User-Agent: ' . $user_agent, 'Cookie: ' . $cookies, 'Content-Type: application/x-www-form-urlencoded'));
 	curl_setopt($curl, CURLOPT_FAILONERROR, true);
+	curl_setopt($curl, CURLOPT_ENCONDING, '');
+	curl_setopt($curl, CURLOPT_TCP_FASTOPEN, 1);
 
 	//exec curl, get content and headers
 	$content['output']=curl_exec($curl);
@@ -330,14 +334,25 @@ index.php (cURL version):
 		//set received content type
 		foreach($http_response_header as $i)
 		{
+			// content type
 			if(preg_match('/^Content-type:\s*([^;]+)/', $i, $x))
 				header('Content-type:' . $x[1]);
 			if(preg_match('/^Content-Type:\s*([^;]+)/', $i, $x))
 				header('Content-Type:' . $x[1]);
+
+			// content length
 			if(preg_match('/^Content-Length:\s*([^;]+)/', $i, $x))
 				header('Content-Length:' . $x[1]);
 			if(preg_match('/^Content-length:\s*([^;]+)/', $i, $x))
 				header('Content-length:' . $x[1]);
+
+			// cache
+			if(preg_match('/^Expires:\s*([^;]+)/', $i, $x))
+				header('Expires:' . $x[1]);
+			if(preg_match('/^Pragma:\s*([^;]+)/', $i, $x))
+				header('Pragma:' . $x[1]);
+			if(preg_match('/^Cache-Control:\s*([^;]+)/', $i, $x))
+				header('Cache-Control:' . $x[1]);
 		}
 
 		//set received cookies
