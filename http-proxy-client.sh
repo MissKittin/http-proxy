@@ -6,7 +6,7 @@ port=$(shuf -i 2048-65000 -n 1)
 [ "$port" = 45986 ] && port=$(shuf -i 2048-65000 -n 1)
 
 # start the PHP server in the background
-### Paste your php builtin server command
+### Paste your php builtin server command, add  -- ${TCPREMOTEIP} as last argument
 pid=$!
 sleep 1
 
