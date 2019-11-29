@@ -247,6 +247,7 @@ index.php (cURL version):
 	// 24.08.2019, 07.11.2019
 	// Accept enconding option and tcp fastopen 26.11.2019
 	// Cache headers 27,29.11.2019
+	// gzip handler 29.11.2019
 
 	// Note: You must set post_max_size to high value eg. 4120
 	// with $_POST encryption ~ 6000
@@ -350,6 +351,9 @@ index.php (cURL version):
 				header('Cache-Control: max-age=3600');
 			}
 		}
+
+		//enable gzip
+		if(substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip')) ob_start('ob_gzhandler');
 
 		//set received content type
 		foreach($http_response_header as $i)
