@@ -1,4 +1,10 @@
 <?php
+	// if running via tcpserver
+	$tcpserver_cmdline=str_replace(['--', "\0"], '', strstr(file_get_contents('/proc/self/cmdline'), '--'));
+	if($tcpserver_cmdline !== '')
+		$_SERVER['REMOTE_ADDR']=$tcpserver_cmdline;
+	unset($tcpserver_cmdline);
+
 	// accept connection only from your remote server and loopback, log if denied
 	if($_SERVER['REMOTE_ADDR'] != 'YOUR_PROVIDER_IP' && $_SERVER['REMOTE_ADDR'] != '127.0.0.1')
 	{
@@ -240,7 +246,7 @@ index.php (cURL version):
 	// PHP proxy server - cURL version
 	// 24.08.2019, 07.11.2019
 	// Accept enconding option and tcp fastopen 26.11.2019
-	// Cache headers 27.11.2019
+	// Cache headers 27,29.11.2019
 
 	// Note: You must set post_max_size to high value eg. 4120
 	// with $_POST encryption ~ 6000
@@ -331,28 +337,40 @@ index.php (cURL version):
 <?php }
 	else
 	{
+		//send cache headers
+		function cacheHeaders($i)
+		{
+			if(
+				($i !== 'text/plain') &&
+				($i !== 'text/html') &&
+				($i !== 'application/json')
+			){
+				header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
+				header('Pragma: cache');
+				header('Cache-Control: max-age=3600');
+			}
+		}
+
 		//set received content type
 		foreach($http_response_header as $i)
 		{
-			// content type
+			//content type
 			if(preg_match('/^Content-type:\s*([^;]+)/', $i, $x))
+			{
 				header('Content-type:' . $x[1]);
+				cacheHeaders($x[1]);
+			}
 			if(preg_match('/^Content-Type:\s*([^;]+)/', $i, $x))
+			{
 				header('Content-Type:' . $x[1]);
+				cacheHeaders($x[1]);
+			}
 
-			// content length
+			//content length
 			if(preg_match('/^Content-Length:\s*([^;]+)/', $i, $x))
 				header('Content-Length:' . $x[1]);
 			if(preg_match('/^Content-length:\s*([^;]+)/', $i, $x))
 				header('Content-length:' . $x[1]);
-
-			// cache
-			if(preg_match('/^Expires:\s*([^;]+)/', $i, $x))
-				header('Expires:' . $x[1]);
-			if(preg_match('/^Pragma:\s*([^;]+)/', $i, $x))
-				header('Pragma:' . $x[1]);
-			if(preg_match('/^Cache-Control:\s*([^;]+)/', $i, $x))
-				header('Cache-Control:' . $x[1]);
 		}
 
 		//set received cookies
@@ -382,6 +400,9 @@ index.php (cURL version):
 	downloaded	|$cookies => received cookies array <-
 	-----------	-$http_response_header => extracted headers from $content <-
 		Variables in loops: $i, $x, $y $z
+
+	Functions:
+		cacheHeaders()
 	*/
 ?>
 ======================================
